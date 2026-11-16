@@ -1,0 +1,3 @@
+No sign-in is needed. Episodes, shows and games load from the show's own website, www.pezzadox.com, which is run by the same developer. A snapshot of every episode is built into the app so it works on first launch and offline.
+Native features: new-episode alerts (More → New episode alerts) use a background check of the site and local notifications; episodes open YouTube; pages and games open in an in-app browser; Share uses the system share sheet.
+The app collects no data and has no ads, accounts or purchases.

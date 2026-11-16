@@ -1,0 +1,29 @@
+{
+  "name": "pezzadox-worlds",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Pezzadox Worlds: the shows, every episode and the Dimension Hop games, in one app.",
+  "scripts": {
+    "build": "node tools/build.js",
+    "sync": "node tools/build.js && cap sync",
+    "test": "node tools/build.js && python3 tests/test_app.py"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.0.0",
+    "@capacitor/background-runner": "^3.0.0",
+    "@capacitor/core": "^8.0.0",
+    "@capacitor/haptics": "^8.0.0",
+    "@capacitor/inappbrowser": "^4.0.0",
+    "@capacitor/ios": "^8.0.0",
+    "@capacitor/local-notifications": "^8.0.0",
+    "@capacitor/share": "^8.0.0",
+    "@capacitor/splash-screen": "^8.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^8.0.0",
+    "@fontsource/space-grotesk": "^5.0.0",
+    "@fontsource/unbounded": "^5.0.0",
+    "esbuild": "^0.25.0"
+  }
+}

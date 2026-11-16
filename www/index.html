@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#07060F">
+<title>Pezzadox Worlds</title>
+<link rel="stylesheet" href="fonts/fonts.css">
+<style>
+:root{
+  --bg:#07060F; --panel:#110F1E; --panel2:#181530; --line:rgba(255,255,255,.09);
+  --ink:#F3F1FA; --muted:#8E89A4; --soft:#D7D2E8; --cyan:#5CEBFF; --pink:#FF4FB3; --gold:#FFC857;
+  --head:'Unbounded',system-ui,sans-serif; --body:'Space Grotesk',system-ui,sans-serif;
+  --safe-top:env(safe-area-inset-top,0px); --safe-bot:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font:16px/1.5 var(--body);overscroll-behavior:none}
+body{overflow:hidden}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+img{display:block}
+.glow{position:fixed;border-radius:50%;filter:blur(90px);pointer-events:none;z-index:0}
+.glow.c{top:-220px;left:-160px;width:520px;height:520px;background:radial-gradient(circle,var(--cyan),transparent 68%);opacity:.32}
+.glow.p{top:180px;right:-220px;width:520px;height:520px;background:radial-gradient(circle,var(--pink),transparent 68%);opacity:.26}
+
+#app{position:relative;z-index:1;height:100%;display:flex;flex-direction:column}
+header.top{padding:calc(var(--safe-top) + 14px) 20px 10px;display:flex;align-items:center;justify-content:space-between}
+.brand{font:800 20px/1 var(--head);letter-spacing:.01em}
+.brand span{color:var(--cyan)}
+.brand small{display:block;font:500 11px/1.4 var(--body);color:var(--muted);letter-spacing:.14em;text-transform:uppercase;margin-top:4px}
+.iconbtn{width:40px;height:40px;border-radius:12px;border:1px solid var(--line);display:grid;place-items:center;background:rgba(255,255,255,.03)}
+main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:4px 0 calc(92px + var(--safe-bot))}
+.view{display:none}.view.on{display:block;animation:fade .2s ease}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+h1,h2{font-family:var(--head);margin:0}
+h1{font-size:26px;line-height:1.15;padding:6px 20px 4px}
+h2{font-size:17px;padding:22px 20px 10px;display:flex;justify-content:space-between;align-items:baseline}
+h2 button{font:500 13px var(--body);color:var(--cyan)}
+.lead{color:var(--muted);padding:0 20px;margin:0 0 6px;font-size:15px}
+
+/* tabs */
+nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:5;display:flex;justify-content:space-around;padding:8px 6px calc(8px + var(--safe-bot));background:rgba(7,6,15,.88);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-top:1px solid var(--line)}
+nav.tabs button{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:var(--muted);padding:4px 0}
+nav.tabs button svg{width:24px;height:24px}
+nav.tabs button.on{color:var(--ink)}
+nav.tabs button.on svg{color:var(--cyan);filter:drop-shadow(0 0 8px rgba(92,235,255,.6))}
+
+/* cards */
+.hero{margin:6px 20px 0;border-radius:22px;overflow:hidden;position:relative;background:var(--panel);border:1px solid var(--line);min-height:210px}
+.hero img{width:100%;aspect-ratio:16/9;object-fit:cover}
+.hero .shade{position:absolute;inset:0;background:linear-gradient(180deg,transparent 30%,rgba(7,6,15,.95))}
+.hero .meta{position:absolute;left:16px;right:16px;bottom:14px}
+.tag{display:inline-block;font:600 11px/1 var(--body);letter-spacing:.08em;text-transform:uppercase;padding:6px 9px;border-radius:999px;background:rgba(92,235,255,.14);color:var(--cyan)}
+.tag.pink{background:rgba(255,79,179,.16);color:var(--pink)}
+.tag.new{background:var(--pink);color:#fff}
+.hero h3{font:700 18px/1.25 var(--head);margin:8px 0 4px}
+.sub{font-size:13px;color:var(--muted)}
+.row{display:flex;gap:12px;overflow-x:auto;padding:0 20px 4px;scroll-snap-type:x mandatory;scrollbar-width:none}
+.row::-webkit-scrollbar{display:none}
+.mini{flex:0 0 220px;scroll-snap-align:start;text-align:left}
+.thumb{position:relative;border-radius:16px;overflow:hidden;background:linear-gradient(135deg,#1b1640,#2a0f2a);aspect-ratio:16/9;border:1px solid var(--line)}
+.thumb img{width:100%;height:100%;object-fit:cover}
+.thumb .ep{position:absolute;left:8px;top:8px;font:700 11px/1 var(--head);padding:5px 7px;border-radius:8px;background:rgba(7,6,15,.75)}
+.thumb .dur{position:absolute;right:8px;bottom:8px;font:600 11px/1 var(--body);padding:4px 6px;border-radius:6px;background:rgba(7,6,15,.8)}
+.mini b{display:block;font:600 14px/1.3 var(--body);margin-top:8px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.shows{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;padding:0 20px}
+.show{border-radius:16px;padding:14px 10px;min-height:96px;text-align:left;border:1px solid var(--line);background:linear-gradient(160deg,rgba(92,235,255,.14),rgba(255,79,179,.08));display:flex;flex-direction:column;justify-content:space-between}
+.show:nth-child(2){background:linear-gradient(160deg,rgba(124,255,107,.12),rgba(92,235,255,.06))}
+.show:nth-child(3){background:linear-gradient(160deg,rgba(255,79,179,.2),rgba(255,200,87,.08))}
+.show i{font-style:normal;font-size:24px}
+.show b{font:700 12px/1.25 var(--head)}
+.card{margin:0 20px 10px;border-radius:18px;padding:16px;background:var(--panel);border:1px solid var(--line)}
+.card p{margin:6px 0 12px;color:var(--soft);font-size:14px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:46px;padding:0 18px;border-radius:14px;font-weight:600;background:var(--cyan);color:#07060F}
+.btn.pink{background:var(--pink);color:#fff;box-shadow:0 0 24px rgba(255,79,179,.35)}
+.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--ink)}
+.btn.wide{width:100%}
+
+/* episodes */
+.search{margin:6px 20px 10px;display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:0 12px}
+.search input{flex:1;height:46px;background:none;border:0;color:var(--ink);font:16px var(--body);outline:none}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:0 20px 12px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:0 0 auto;height:34px;padding:0 13px;border-radius:999px;border:1px solid var(--line);font-size:13px;color:var(--soft)}
+.chip.on{background:var(--ink);color:#07060F;border-color:var(--ink);font-weight:600}
+.list{padding:0 20px;display:flex;flex-direction:column;gap:12px}
+.item{display:grid;grid-template-columns:136px 1fr;gap:12px;text-align:left;align-items:start}
+.item b{font:600 14px/1.3 var(--body);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.item .sub{margin-top:4px}
+.empty{padding:30px 20px;color:var(--muted);text-align:center}
+
+/* games */
+.games{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 20px}
+.game{border-radius:18px;padding:14px;min-height:150px;text-align:left;display:flex;flex-direction:column;justify-content:space-between;border:1px solid var(--line);position:relative;overflow:hidden;background:var(--panel)}
+.game::before{content:'';position:absolute;inset:0;background:var(--g);opacity:.55}
+.game>*{position:relative}
+.game .em{font-size:30px}
+.game b{font:700 14px/1.2 var(--head)}
+.game span{font-size:12px;color:var(--soft);line-height:1.35}
+.note{margin:14px 20px 0;padding:12px 14px;border-radius:14px;border:1px dashed var(--line);color:var(--muted);font-size:13px}
+
+/* link lists */
+.links{margin:0 20px;border-radius:18px;background:var(--panel);border:1px solid var(--line);overflow:hidden}
+.links button{width:100%;display:flex;align-items:center;gap:14px;padding:15px 16px;text-align:left;border-bottom:1px solid var(--line)}
+.links button:last-child{border-bottom:0}
+.links .ic{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:rgba(255,255,255,.05);font-size:18px;flex:0 0 36px}
+.links .tx{flex:1}
+.links .tx b{display:block;font-weight:600}
+.links .tx small{color:var(--muted);font-size:13px}
+.links .chev{color:var(--muted)}
+.switch{width:50px;height:30px;border-radius:999px;background:#2b2840;position:relative;flex:0 0 50px;transition:.2s}
+.switch::after{content:'';position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:.2s}
+.switch.on{background:var(--cyan)}.switch.on::after{left:23px}
+.foot{padding:20px;color:var(--muted);font-size:12px;text-align:center}
+
+/* episode sheet */
+#sheet{position:fixed;inset:0;z-index:10;display:none;background:rgba(3,2,8,.6)}
+#sheet.on{display:block}
+#sheet .panel{position:absolute;left:0;right:0;bottom:0;top:calc(var(--safe-top) + 24px);background:var(--bg);border-radius:24px 24px 0 0;border-top:1px solid var(--line);overflow-y:auto;animation:up .25s ease;padding-bottom:calc(30px + var(--safe-bot))}
+@keyframes up{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
+#sheet .grab{width:44px;height:5px;border-radius:3px;background:#3a3654;margin:10px auto 6px}
+#sheet .close{position:absolute;right:14px;top:12px;z-index:3;background:rgba(7,6,15,.7)}
+#sheet .thumb{margin:10px 20px 0;border-radius:18px}
+#sheet h3{font:700 20px/1.25 var(--head);margin:14px 20px 6px}
+#sheet .desc{padding:0 20px;color:var(--soft);font-size:15px;white-space:pre-line}
+#sheet .acts{display:grid;gap:10px;padding:18px 20px 0}
+#sheet .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.toast{position:fixed;left:50%;bottom:calc(100px + var(--safe-bot));transform:translateX(-50%);background:var(--ink);color:#07060F;padding:10px 16px;border-radius:12px;font-weight:600;font-size:14px;z-index:20;opacity:0;transition:.25s;pointer-events:none}
+.toast.on{opacity:1}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+</style>
+</head>
+<body>
+<div class="glow c"></div><div class="glow p"></div>
+<div id="app">
+  <header class="top">
+    <div class="brand">PEZZADOX <span>WORLDS</span><small id="headSub">Shows · Episodes · Games</small></div>
+    <button class="iconbtn" id="refreshBtn" aria-label="Check for new episodes">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 4v5h-5"/></svg>
+    </button>
+  </header>
+  <main id="main">
+    <section class="view on" id="v-home"></section>
+    <section class="view" id="v-episodes"></section>
+    <section class="view" id="v-games"></section>
+    <section class="view" id="v-watch"></section>
+    <section class="view" id="v-more"></section>
+  </main>
+  <nav class="tabs" id="tabs" aria-label="Sections">
+    <button data-tab="home" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 11 12 4l9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Home</button>
+    <button data-tab="episodes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>Episodes</button>
+    <button data-tab="games"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="7" width="20" height="11" rx="5"/><path d="M7 11v3M5.5 12.5h3M16 12h.01M18.5 13.5h.01"/></svg>Games</button>
+    <button data-tab="watch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m10 9 5 3-5 3z"/></svg>Watch</button>
+    <button data-tab="more"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>More</button>
+  </nav>
+</div>
+<div id="sheet" role="dialog" aria-modal="true" aria-label="Episode"><div class="panel" id="sheetPanel"></div></div>
+<div class="toast" id="toast" role="status"></div>
+<script src="app.js"></script>
+</body>
+</html>

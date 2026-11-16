@@ -1,0 +1,20 @@
+{
+  "appId": "com.pezzadox.worlds",
+  "appName": "Pezzadox Worlds",
+  "webDir": "www",
+  "backgroundColor": "#07060F",
+  "ios": { "contentInset": "never" },
+  "plugins": {
+    "CapacitorHttp": { "enabled": true },
+    "SplashScreen": { "launchShowDuration": 1500, "launchAutoHide": false, "backgroundColor": "#07060F", "showSpinner": false },
+    "LocalNotifications": { "iconColor": "#5CEBFF" },
+    "BackgroundRunner": {
+      "label": "com.pezzadox.worlds.episodes",
+      "src": "runners/episodes.js",
+      "event": "checkEpisodes",
+      "repeat": true,
+      "interval": 240,
+      "autoStart": true
+    }
+  }
+}
