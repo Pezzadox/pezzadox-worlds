@@ -48,6 +48,8 @@ function duration(iso) {
   const h = +(m[1] || 0), mins = +(m[2] || 0);
   return h ? `${h}h ${mins}m` : `${mins}m`;
 }
+const clip = (t, n) => { t = String(t || '').replace(/\s+/g, ' ').trim(); return t.length > n ? t.slice(0, n).replace(/\s\S*$/, '') + '…' : t; };
+const clock = s => { const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60; return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(x).padStart(2, '0'); };
 const epLabel = e => (e.show === 'Parag-Gators' ? 'PG ' : 'EP ') + e.ep;
 const isNew = e => !seen.has(e.slug);
 
@@ -56,6 +58,7 @@ async function loadSnapshot() {
   const r = await fetch('data/episodes.json');
   const data = await r.json();
   episodes = data.episodes;
+  store.set('shorts', data.shorts || []);
   seen = new Set(episodes.map(e => e.slug));   // everything shipped with the app counts as seen
   store.set('episodes', episodes); store.set('seen', [...seen]);
 }
@@ -71,7 +74,12 @@ function parseEpisode(slug, html) {
   const num = +((/EP\s?(\d+)/i.exec(og) || [])[1] || 0);
   const yt = ((/v=([A-Za-z0-9_-]+)/.exec(ld.contentUrl || '') || [])[1]) || null;
   const thumbs = [].concat(ld.thumbnailUrl || []);
+  const shorts = [...doc.querySelectorAll('.shorts a[href*="/shorts/"]')].map(a => [(/shorts\/([A-Za-z0-9_-]+)/.exec(a.href) || [])[1], a.querySelector('img')?.alt || a.textContent.trim()]).filter(x => x[0]);
+  const lines = [...doc.querySelectorAll('p[data-t]')];
+  const n = Math.min(6, lines.length);
+  const moments = [...Array(n)].map((_, k) => lines[Math.floor((k + 0.5) * lines.length / n)]).map(p => [+p.dataset.t, clip(p.textContent, 110)]);
   return {
+    shorts, moments,
     slug, ep: num, show: slug.startsWith('parag-gators') ? 'Parag-Gators' : 'The Pezzadox Show',
     genre: ld.genre || '', yt, dur: ld.duration || '',
     title: ld.name || og.replace(/\s*\|\s*The Pezzadox Show.*$/, '') || slug,
@@ -108,14 +116,35 @@ async function refresh(manual) {
 
 // Fills in a description the snapshot doesn't carry, the first time an episode is opened.
 async function ensureDesc(e) {
-  if (e.desc) return e;
+  if (e.desc && e.more) return e;
   try {
     const full = parseEpisode(e.slug, await (await fetch(`${SITE}/episodes/${e.slug}.html`)).text());
-    Object.assign(e, { desc: full.desc, genre: e.genre || full.genre });
+    Object.assign(e, { desc: full.desc, genre: e.genre || full.genre, moments: full.moments, shorts: full.shorts.length ? full.shorts : (e.shorts || []), more: true });
     store.set('episodes', episodes);
   } catch {}
   return e;
 }
+
+// ---------- video ----------
+// Videos play inside the app. YouTube's player needs a proper web address around it, which
+// the app's own pages don't have on iPhone, so it is hosted by a tiny page on pezzadox.com.
+const playerUrl = (id, t = 0, short = false) => `${SITE}/app-player.html?v=${encodeURIComponent(id)}${t ? '&t=' + t : ''}${short ? '&s=1' : ''}`;
+const frame = (id, t, short) => `<iframe src="${esc(playerUrl(id, t, short))}" title="Video player" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>`;
+function playInSheet(id, t = 0) {
+  const p = $('#sheetPanel .player');
+  if (!p) return;
+  tap();
+  p.classList.add('playing');
+  p.innerHTML = frame(id, t);
+  p.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+function playShort(id, title) {
+  tap();
+  $('#vid').innerHTML = `<div class="vbox short">${frame(id, 0, true)}</div><p>${esc(title || '')}</p><button class="btn ghost" data-vclose>Close</button>`;
+  $('#vid').classList.add('on');
+}
+function closeVid() { $('#vid').classList.remove('on'); $('#vid').innerHTML = ''; }
+const shortCard = ([id, title]) => `<button class="short" data-short="${esc(id)}" data-title="${esc(title)}"><img src="https://i.ytimg.com/vi/${esc(id)}/hqdefault.jpg" alt="" loading="lazy" onerror="this.remove()"><span class="pb sm"></span><b>${esc(title)}</b></button>`;
 
 // ---------- native bridges (with web fallbacks for the browser preview) ----------
 async function openPage(path) {
@@ -154,7 +183,7 @@ async function setAlerts(want) {
 
 // ---------- rendering ----------
 const img = (src, alt = '') => src ? `<img src="${esc(src)}" alt="${esc(alt)}" loading="lazy" onerror="this.remove()">` : '';
-const thumb = e => `<div class="thumb">${img(e.thumb)}<span class="ep">${epLabel(e)}</span>${e.dur ? `<span class="dur">${duration(e.dur)}</span>` : ''}</div>`;
+const thumb = e => `<div class="thumb">${img(e.thumb)}<span class="pb sm"></span><span class="ep">${epLabel(e)}</span>${e.dur ? `<span class="dur">${duration(e.dur)}</span>` : ''}</div>`;
 
 function homeView() {
   const [latest, ...rest] = episodes;
@@ -165,7 +194,7 @@ function homeView() {
     ${latest ? `
     <h2>${fresh.length ? 'New episode' : 'Latest episode'}</h2>
     <button class="hero" data-ep="${esc(latest.slug)}" style="display:block;width:calc(100% - 40px);text-align:left">
-      ${img(latest.thumb, latest.title)}<div class="shade"></div>
+      ${img(latest.thumb, latest.title)}<div class="shade"></div><span class="pb" data-play-ep="${esc(latest.slug)}" role="button" aria-label="Play"></span>
       <div class="meta"><span class="tag ${isNew(latest) ? 'new' : ''}">${isNew(latest) ? 'New · ' : ''}${epLabel(latest)}</span>
       <h3>${esc(latest.title)}</h3><div class="sub">${esc(latest.genre)}${latest.dur ? ' · ' + duration(latest.dur) : ''}</div></div>
     </button>` : ''}
@@ -173,6 +202,8 @@ function homeView() {
     <div class="shows">${SHOWS.map((s, i) => `<button class="show" data-open="${esc(s.url)}"><i>${s.em}</i><b>${esc(s.name)}</b></button>`).join('')}</div>
     <h2>More episodes <button data-tab-go="episodes">See all</button></h2>
     <div class="row">${rest.slice(0, 8).map(e => `<button class="mini" data-ep="${esc(e.slug)}">${thumb(e)}<b>${esc(e.title)}</b></button>`).join('')}</div>
+    ${store.get('shorts', []).length ? `<h2>Shorts <button data-tab-go="watch">See all</button></h2>
+    <div class="row">${store.get('shorts', []).slice(0, 6).map(shortCard).join('')}</div>` : ''}
     <h2>Pezzadox Dimension Hop <button data-tab-go="games">All games</button></h2>
     <div class="row">${GAMES.slice(0, 5).map(g => `<button class="game" style="--g:${g.g};flex:0 0 150px" data-open="${esc(g.url)}"><span class="em">${g.em}</span><b>${esc(g.name)}</b></button>`).join('')}</div>
     ${alerts.on ? '' : `
@@ -212,6 +243,10 @@ function watchView() {
     <h1>Watch</h1>
     <p class="lead">Full episodes, shorts and clips.</p>
     <h2>Shorts</h2>
+    <div class="shortgrid">${store.get('shorts', []).map(shortCard).join('')}</div>
+    <h2>Latest episodes</h2>
+    <div class="row">${episodes.slice(0, 8).map(e => `<button class="mini" data-play-ep="${esc(e.slug)}">${thumb(e)}<b>${esc(e.title)}</b></button>`).join('')}</div>
+    <h2>More to watch</h2>
     <div class="links">
       ${linkRow('⚡', 'Shorts and clips', 'The best moments, all in one place', 'data-open="/shorts.html"')}
       ${linkRow('📜', 'Transcripts', 'Read any episode', 'data-open="/transcripts.html"')}
@@ -257,33 +292,44 @@ function moreView() {
     <div class="foot">Pezzadox Worlds 1.0 · © 2026 Pezzadox</div>`;
 }
 
-function openEpisode(slug) {
+function openEpisode(slug, autoplay = false) {
   const e = episodes.find(x => x.slug === slug);
   if (!e) return;
   tap();
   if (isNew(e)) { seen.add(e.slug); store.set('seen', [...seen]); }
+  $('#sheetPanel').dataset.slug = e.slug;
   const draw = () => {
     $('#sheetPanel').innerHTML = `
       <div class="grab"></div>
       <button class="iconbtn close" data-close aria-label="Close">✕</button>
-      ${thumb(e)}
+      <div class="player thumb">${e.yt ? `<img src="https://i.ytimg.com/vi/${esc(e.yt)}/maxresdefault.jpg" alt="" onerror="this.onerror=null;this.src='${esc(e.thumb)}'">` : img(e.thumb)}
+        ${e.yt ? `<button class="pb big" data-play="${esc(e.yt)}" aria-label="Play episode"></button>` : ''}${e.dur ? `<span class="dur">${duration(e.dur)}</span>` : ''}</div>
       <div style="padding:14px 20px 0;display:flex;gap:6px;flex-wrap:wrap"><span class="tag">${esc(e.show)}</span>${e.genre ? `<span class="tag pink">${esc(e.genre)}</span>` : ''}</div>
       <h3>${esc(e.title)}</h3>
       <div class="desc">${e.desc ? esc(e.desc) : '<span class="sub">Loading the story…</span>'}</div>
       <div class="acts">
-        ${e.yt ? `<button class="btn pink wide" data-out="https://www.youtube.com/watch?v=${esc(e.yt)}">▶ Watch on YouTube</button>` : ''}
+        ${e.yt ? `<button class="btn pink wide" data-play="${esc(e.yt)}">▶ Play episode</button>` : ''}
         <div class="two">
-          <button class="btn ghost" data-open="/episodes/${esc(e.slug)}.html">Episode page</button>
+          ${e.yt ? `<button class="btn ghost" data-out="https://www.youtube.com/watch?v=${esc(e.yt)}">Open in YouTube</button>` : `<button class="btn ghost" data-open="/episodes/${esc(e.slug)}.html">Episode page</button>`}
           <button class="btn ghost" data-share="${esc(e.slug)}">Share</button>
         </div>
-      </div>`;
+      </div>
+      ${e.moments?.length && e.yt ? `<h4>Jump to a moment</h4><div class="moments">${e.moments.map(([t, txt]) => `<button data-play="${esc(e.yt)}" data-t="${t}"><span class="ts">${clock(t)}</span>${esc(txt)}</button>`).join('')}</div>` : ''}
+      ${e.yt ? `<h4>From the episode</h4><div class="stills">${[1, 2, 3].map(n => `<button data-play="${esc(e.yt)}" aria-label="Play"><img src="https://i.ytimg.com/vi/${esc(e.yt)}/hq${n}.jpg" alt="" loading="lazy" onerror="this.parentNode.remove()"></button>`).join('')}</div>` : ''}
+      ${e.shorts?.length ? `<h4>Shorts from this episode</h4><div class="row">${e.shorts.map(shortCard).join('')}</div>` : ''}
+      <div class="acts"><button class="btn ghost" data-open="/episodes/${esc(e.slug)}.html">Full episode page and transcript</button></div>`;
   };
   draw();
   $('#sheet').classList.add('on');
   $('#sheetPanel').scrollTop = 0;
-  if (!e.desc) ensureDesc(e).then(() => { if ($('#sheet').classList.contains('on')) draw(); });
+  if (autoplay && e.yt) playInSheet(e.yt);
+  if (!e.desc || !e.more) ensureDesc(e).then(() => {
+    if (!$('#sheet').classList.contains('on') || $('#sheetPanel').dataset.slug !== e.slug) return;
+    const playing = $('#sheetPanel .player.playing');
+    if (playing) { const keep = playing.outerHTML; draw(); $('#sheetPanel .player').outerHTML = keep; } else draw();
+  });
 }
-function closeSheet() { $('#sheet').classList.remove('on'); render(); }
+function closeSheet() { $('#sheet').classList.remove('on'); $('#sheetPanel').innerHTML = ''; render(); }
 
 const views = { home: homeView, episodes: episodesView, games: gamesView, watch: watchView, more: moreView };
 let tab = 'home';
@@ -302,13 +348,18 @@ function go(t) {
 }
 
 document.addEventListener('click', ev => {
-  const b = ev.target.closest('button, [data-close]');
+  const b = ev.target.closest('button, [data-close], [data-play-ep]');
   if (ev.target === $('#sheet')) return closeSheet();
+  if (ev.target === $('#vid')) return closeVid();
   if (!b) return;
   const d = b.dataset;
   if (d.tab) return go(d.tab);
   if (d.tabGo) return go(d.tabGo);
+  if (d.playEp) return openEpisode(d.playEp, true);
   if (d.ep) return openEpisode(d.ep);
+  if (d.play) return playInSheet(d.play, +(d.t || 0));
+  if (d.short) return playShort(d.short, d.title);
+  if ('vclose' in d) return closeVid();
   if (d.open) return openPage(d.open);
   if (d.out) return openOut(d.out);
   if (d.topic) { topic = d.topic; tap(); return render(); }
@@ -324,7 +375,11 @@ document.addEventListener('click', ev => {
   }
 });
 document.addEventListener('input', ev => { if (ev.target.id === 'q') { query = ev.target.value; render(); } });
-document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && $('#sheet').classList.contains('on')) closeSheet(); });
+document.addEventListener('keydown', ev => {
+  if (ev.key !== 'Escape') return;
+  if ($('#vid').classList.contains('on')) return closeVid();
+  if ($('#sheet').classList.contains('on')) closeSheet();
+});
 $('#refreshBtn').addEventListener('click', () => { tap(); toast('Checking for new episodes…'); refresh(true); });
 document.addEventListener('visibilitychange', () => { if (!document.hidden && Date.now() - store.get('checked', 0) > 30 * 60e3) refresh(false); });
 

@@ -124,6 +124,35 @@ nav.tabs button.on svg{color:var(--cyan);filter:drop-shadow(0 0 8px rgba(92,235,
 #sheet .desc{padding:0 20px;color:var(--soft);font-size:15px;white-space:pre-line}
 #sheet .acts{display:grid;gap:10px;padding:18px 20px 0}
 #sheet .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+/* video */
+.pb{position:absolute;left:50%;top:50%;width:64px;height:64px;margin:-32px 0 0 -32px;border-radius:50%;background:rgba(255,79,179,.92);box-shadow:0 0 30px rgba(255,79,179,.55);z-index:2}
+.pb::after{content:"";position:absolute;left:26px;top:20px;border-style:solid;border-width:12px 0 12px 19px;border-color:transparent transparent transparent #fff}
+.pb.sm{width:38px;height:38px;margin:-19px 0 0 -19px;box-shadow:none;background:rgba(7,6,15,.6);border:1.5px solid rgba(255,255,255,.85)}
+.pb.sm::after{left:15px;top:11px;border-width:8px 0 8px 12px}
+.pb.big{width:76px;height:76px;margin:-38px 0 0 -38px}
+.pb.big::after{left:30px;top:24px;border-width:14px 0 14px 22px}
+.hero .pb{top:42%}
+.player{position:relative}
+.player img{width:100%;height:100%;object-fit:cover}
+.player iframe,.vbox iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:#000}
+.player.playing{background:#000}
+#sheet h4{font:700 13px/1 var(--head);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:24px 20px 10px}
+.moments{display:grid;gap:8px;padding:0 20px}
+.moments button{display:flex;gap:10px;align-items:flex-start;text-align:left;padding:10px 12px;border-radius:12px;background:var(--panel);border:1px solid var(--line);font-size:14px;color:var(--soft)}
+.moments .ts{flex:none;font:700 12px/1.6 var(--head);color:var(--cyan)}
+.stills{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:0 20px}
+.stills button{border-radius:12px;overflow:hidden;aspect-ratio:4/3;background:var(--panel)}
+.stills img{width:100%;height:100%;object-fit:cover}
+.short{position:relative;flex:0 0 132px;scroll-snap-align:start;text-align:left;border-radius:16px;overflow:hidden;aspect-ratio:9/16;background:linear-gradient(160deg,#2a0f2a,#1b1640);border:1px solid var(--line)}
+.short img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.short b{position:absolute;left:0;right:0;bottom:0;padding:28px 10px 10px;font:600 12px/1.3 var(--body);background:linear-gradient(180deg,transparent,rgba(7,6,15,.95));display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.shortgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:0 20px}
+.shortgrid .short{flex:none}
+#vid{position:fixed;inset:0;z-index:15;display:none;background:rgba(3,2,8,.92);flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:calc(var(--safe-top) + 16px) 20px calc(var(--safe-bot) + 16px)}
+#vid.on{display:flex}
+#vid p{margin:0;text-align:center;font-weight:600;max-width:420px}
+.vbox{position:relative;width:100%;max-width:640px;aspect-ratio:16/9;border-radius:18px;overflow:hidden;background:#000}
+.vbox.short{width:auto;height:min(68vh,calc((100vw - 40px) * 16 / 9));aspect-ratio:9/16}
 .toast{position:fixed;left:50%;bottom:calc(100px + var(--safe-bot));transform:translateX(-50%);background:var(--ink);color:#07060F;padding:10px 16px;border-radius:12px;font-weight:600;font-size:14px;z-index:20;opacity:0;transition:.25s;pointer-events:none}
 .toast.on{opacity:1}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
@@ -154,6 +183,7 @@ nav.tabs button.on svg{color:var(--cyan);filter:drop-shadow(0 0 8px rgba(92,235,
   </nav>
 </div>
 <div id="sheet" role="dialog" aria-modal="true" aria-label="Episode"><div class="panel" id="sheetPanel"></div></div>
+<div id="vid" role="dialog" aria-modal="true" aria-label="Video"></div>
 <div class="toast" id="toast" role="status"></div>
 <script src="app.js"></script>
 </body>

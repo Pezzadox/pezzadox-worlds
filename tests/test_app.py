@@ -10,6 +10,8 @@ SITEMAP = 'https://www.pezzadox.com/\n' + ''.join(f'https://www.pezzadox.com/epi
 PAGE = '''<html><head><meta property="og:title" content="Brand New Guest | The Pezzadox Show EP40">
 <script type="application/ld+json">{"@type":"VideoObject","name":"Brand New Guest Talks Everything","description":"A test episode description.","thumbnailUrl":["https://i.ytimg.com/vi/abc123/hqdefault.jpg"],"contentUrl":"https://www.youtube.com/watch?v=abc123","duration":"PT1H2M3S","genre":"Mind"}</script></head><body></body></html>'''
 
+OLDPAGE = '<html><head><meta name="description" content="Loaded description."></head><body>' + ''.join(f'<p data-t="{i * 60}">Line {i} of the conversation.</p>' for i in range(30)) + '<div class="shorts"><a href="https://www.youtube.com/shorts/short12345a"><img alt="A test short"><span>A test short</span></a></div></body></html>'
+
 def serve():
     h = functools.partial(http.server.SimpleHTTPRequestHandler, directory=ROOT)
     http.server.SimpleHTTPRequestHandler.log_message = lambda *a: None
@@ -30,7 +32,7 @@ with sync_playwright() as p:
         cors = {'Access-Control-Allow-Origin': '*'}
         if u.endswith('/pezzadox-sitemap.txt'): return r.fulfill(body=SITEMAP, headers=cors)
         if u.endswith('/episodes/new-guest.html'): return r.fulfill(body=PAGE, headers=cors)
-        if 'pezzadox.com/episodes/' in u: return r.fulfill(body='<html><head><meta name="description" content="Loaded description."></head></html>', headers=cors)
+        if 'pezzadox.com/episodes/' in u: return r.fulfill(body=OLDPAGE, headers=cors)
         return r.abort()
     ctx.route('https://**/*', route)
     pg = ctx.new_page(); errs = []
@@ -50,8 +52,14 @@ with sync_playwright() as p:
     pg.fill('#q', ''); pg.wait_for_timeout(200)
     if OUT: pg.screenshot(path=f'{OUT}/2-episodes.png')
     pg.click('#v-episodes .item >> nth=1'); pg.wait_for_timeout(600)
-    check('episode sheet opens with a YouTube button', 'Watch on YouTube' in pg.inner_text('#sheet'))
+    check('episode sheet opens with a play button', 'Play episode' in pg.inner_text('#sheet'))
     check('missing description is fetched', 'Loaded description.' in pg.inner_text('#sheet'))
+    check('moments come from the transcript', pg.locator('#sheet .moments button').count() == 6)
+    check('stills row is drawn', pg.locator('#sheet .stills').count() == 1)
+    check('episode shorts are shown', pg.locator('#sheet .short').count() >= 1)
+    pg.click('#sheet .moments button >> nth=1'); pg.wait_for_timeout(300)
+    src = pg.get_attribute('#sheet .player iframe', 'src') or ''
+    check('moment plays in the app at its time', src.startswith('https://www.pezzadox.com/app-player.html?v=') and '&t=' in src)
     if OUT: pg.screenshot(path=f'{OUT}/3-episode.png')
     pg.click('[data-close]'); pg.wait_for_timeout(200)
     check('sheet closes', not pg.is_visible('#sheet'))
@@ -60,6 +68,17 @@ with sync_playwright() as p:
     if OUT: pg.screenshot(path=f'{OUT}/4-games.png')
     pg.click('[data-tab="watch"]'); pg.wait_for_timeout(200)
     check('watch links', pg.locator('#v-watch .links button').count() >= 8)
+    check('shorts grid', pg.locator('#v-watch .shortgrid .short').count() == 9)
+    pg.click('#v-watch .shortgrid .short >> nth=0'); pg.wait_for_timeout(300)
+    check('short plays in the app', '&s=1' in (pg.get_attribute('#vid iframe', 'src') or ''))
+    if OUT: pg.screenshot(path=f'{OUT}/6-short.png')
+    pg.click('[data-vclose]'); pg.wait_for_timeout(200)
+    check('short closes', not pg.is_visible('#vid'))
+    pg.click('[data-tab="home"]'); pg.wait_for_timeout(200)
+    pg.click('.hero .pb'); pg.wait_for_timeout(300)
+    check('hero play starts the latest episode', pg.locator('#sheet .player iframe').count() == 1)
+    pg.click('[data-close]'); pg.wait_for_timeout(200)
+    pg.click('[data-tab="watch"]'); pg.wait_for_timeout(200)
     pg.click('[data-tab="more"]'); pg.wait_for_timeout(200)
     pg.click('#v-more [data-alerts="on"]'); pg.wait_for_timeout(300)
     check('alerts toggle turns on', pg.evaluate("localStorage.getItem('pw.alerts')") == 'true')
