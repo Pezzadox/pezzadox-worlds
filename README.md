@@ -19,11 +19,16 @@ The app is a small shell (`www/index.html`, `src/app.js`) around www.pezzadox.co
   hours, compare the sitemap with the episodes already seen, and post a local notification.
   No server and no push service account needed.
 
+- **Video messages** (Android): people pay through Google Play for a personal video from
+  Kyle and watch it in the app. The app side is `src/video.js`; the rules for payments and
+  refunds are `supabase/functions/_shared/core.js`; Kyle's queue is `site/video-studio.html`.
+  Off until the backend is set up: see `docs/video-messages.md`.
+
 ## Develop
 
 ```bash
 npm install
-npm test          # builds www/app.js and runs the phone-size test against a simulated pezzadox.com
+npm test          # builds www/app.js, then the phone-size tests and the video-message payment rules
 npm run sync      # build and copy into the iOS and Android projects
 ```
 

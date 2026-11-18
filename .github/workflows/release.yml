@@ -57,6 +57,9 @@ jobs:
           else echo "upload=no" >> $GITHUB_OUTPUT; echo "::notice::No Play service account yet — the bundle is kept as an artifact for a manual upload."; fi
 
       - if: steps.gate.outputs.ready == 'yes'
+        env:
+          PW_SUPABASE_URL: ${{ secrets.PW_SUPABASE_URL }}
+          PW_SUPABASE_ANON_KEY: ${{ secrets.PW_SUPABASE_ANON_KEY }}
         run: npm ci && npm run build && npx cap sync android
 
       - name: Unpack the signing key

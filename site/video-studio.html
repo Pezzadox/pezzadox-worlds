@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Pezzadox video studio</title>
+<style>
+:root{--bg:#07060F;--panel:#110F1E;--panel2:#181530;--line:rgba(255,255,255,.12);--ink:#F3F1FA;--muted:#9C97B3;--cyan:#5CEBFF;--pink:#FF4FB3;--gold:#FFC857}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:640px;margin:0 auto;padding:20px 16px 60px;display:grid;gap:16px}
+h1{font-size:1.5rem;margin:0}h2{font-size:.8rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:10px 0 0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;display:grid;gap:10px}
+.card.late{border-color:var(--gold)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.pill{font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;border-radius:99px;padding:4px 10px;background:rgba(92,235,255,.14);color:var(--cyan)}
+.pill.late{background:var(--gold);color:#221a00}
+.brief{background:var(--panel2);border-radius:12px;padding:12px;white-space:pre-wrap}
+.muted{color:var(--muted);font-size:.9rem}
+label{font-weight:600;font-size:.9rem}
+input,button{font:inherit}
+input[type=email],input[type=password],input[type=text]{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:12px;color:var(--ink);padding:12px;min-height:46px}
+button{min-height:46px;border-radius:12px;border:1px solid var(--line);background:transparent;color:var(--ink);padding:0 16px;font-weight:600;cursor:pointer}
+button.go{background:var(--pink);border-color:var(--pink);color:#fff}
+button[disabled]{opacity:.5}
+:focus-visible{outline:3px solid var(--cyan);outline-offset:2px}
+#msg{min-height:1.5em;color:var(--gold)}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main>
+  <div class="row" style="justify-content:space-between"><h1>Video studio</h1><button id="out" hidden>Sign out</button></div>
+  <div id="msg" role="status"></div>
+
+  <form class="card" id="signin" hidden>
+    <label for="email">Email</label><input id="email" type="email" autocomplete="username" required>
+    <label for="pass">Password</label><input id="pass" type="password" autocomplete="current-password" required>
+    <button class="go">Sign in</button>
+  </form>
+
+  <section id="studio" hidden>
+    <div class="row" style="justify-content:space-between"><h2 id="waitH">Waiting for you</h2><button id="reload">Refresh</button></div>
+    <div id="waiting" style="display:grid;gap:12px;margin-top:10px"></div>
+    <h2 style="margin-top:22px">Sent</h2>
+    <div id="sent" style="display:grid;gap:8px;margin-top:10px"></div>
+  </section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
+<script>
+(function () {
+  'use strict';
+  var cfg = window.PW_STUDIO || {}, $ = function (id) { return document.getElementById(id); };
+  var say = function (t) { $('msg').textContent = t || ''; };
+  if (!cfg.url || !cfg.anon) { say('This page has not been set up yet: the backend address is missing. See docs/video-messages.md.'); return; }
+  var sb = supabase.createClient(cfg.url, cfg.anon);
+  var el = function (tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+  var day = function (iso) { return iso ? new Date(iso).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) : ''; };
+
+  async function call(action, body) {
+    var s = (await sb.auth.getSession()).data.session;
+    var r = await fetch(cfg.url + '/functions/v1/video-studio', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', apikey: cfg.anon, authorization: 'Bearer ' + (s ? s.access_token : '') },
+      body: JSON.stringify(Object.assign({ action: action }, body || {}))
+    });
+    var j = await r.json().catch(function () { return {}; });
+    if (r.status !== 200) throw new Error(j.message || 'Something went wrong (' + r.status + ').');
+    return j;
+  }
+
+  function waitingCard(r) {
+    var c = el('div', 'card' + (r.overdue ? ' late' : ''));
+    var top = el('div', 'row'); top.appendChild(el('span', 'pill' + (r.overdue ? ' late' : ''), r.overdue ? 'Overdue' : 'Due ' + day(r.dueAt)));
+    top.appendChild(el('strong', '', 'For ' + r.forName)); c.appendChild(top);
+    c.appendChild(el('div', 'muted', r.occasion + ' · from ' + r.fromName + ' · paid ' + day(r.paidAt)));
+    c.appendChild(el('div', 'brief', r.brief));
+    var file = el('input'); file.type = 'file'; file.accept = 'video/mp4,video/quicktime,video/webm'; file.setAttribute('aria-label', 'Video for ' + r.forName); c.appendChild(file);
+    var acts = el('div', 'row'), send = el('button', 'go', 'Upload and send'), no = el('button', '', 'Decline and refund');
+    acts.appendChild(send); acts.appendChild(no); c.appendChild(acts);
+
+    send.onclick = async function () {
+      var f = file.files[0];
+      if (!f) return say('Choose the video file first.');
+      if (f.size > 250 * 1024 * 1024) return say('That file is over 250 MB. Export a smaller one.');
+      send.disabled = no.disabled = true; say('Uploading… keep this page open.');
+      try {
+        var ext = /quicktime/.test(f.type) ? 'mov' : /webm/.test(f.type) ? 'webm' : 'mp4';
+        var up = await call('uploadUrl', { id: r.id, ext: ext });
+        var res = await sb.storage.from('video-messages').uploadToSignedUrl(up.path, up.token, f, { contentType: f.type || 'video/mp4' });
+        if (res.error) throw res.error;
+        await call('ready', { id: r.id, path: up.path });
+        say('Sent to ' + r.fromName + '.'); load();
+      } catch (e) { say(e.message); send.disabled = no.disabled = false; }
+    };
+    var sure = false;
+    no.onclick = async function () {
+      if (!sure) { sure = true; no.textContent = 'Tap again to refund ' + r.fromName; setTimeout(function () { sure = false; no.textContent = 'Decline and refund'; }, 4000); return; }
+      send.disabled = no.disabled = true;
+      try { await call('decline', { id: r.id }); say('Declined and refunded.'); load(); }
+      catch (e) { say(e.message); send.disabled = no.disabled = false; }
+    };
+    return c;
+  }
+
+  async function load() {
+    try {
+      var q = await call('queue');
+      $('waitH').textContent = 'Waiting for you (' + q.waiting.length + ')';
+      var w = $('waiting'); w.textContent = '';
+      if (!q.waiting.length) w.appendChild(el('div', 'muted', 'Nothing waiting. All caught up.'));
+      q.waiting.forEach(function (r) { w.appendChild(waitingCard(r)); });
+      var s = $('sent'); s.textContent = '';
+      if (!q.sent.length) s.appendChild(el('div', 'muted', 'Nothing sent yet.'));
+      q.sent.forEach(function (r) { s.appendChild(el('div', 'muted', 'For ' + r.forName + ' · from ' + r.fromName + ' · sent ' + day(r.readyAt))); });
+    } catch (e) { say(e.message); }
+  }
+
+  function show(signedIn) { $('signin').hidden = signedIn; $('studio').hidden = !signedIn; $('out').hidden = !signedIn; if (signedIn) load(); }
+  $('signin').addEventListener('submit', async function (ev) {
+    ev.preventDefault(); say('');
+    var r = await sb.auth.signInWithPassword({ email: $('email').value.trim(), password: $('pass').value });
+    if (r.error) return say('That email and password did not work.');
+    $('pass').value = ''; show(true);
+  });
+  $('out').onclick = async function () { await sb.auth.signOut(); show(false); };
+  $('reload').onclick = function () { say(''); load(); };
+  sb.auth.getSession().then(function (r) { show(!!r.data.session); });
+})();
+</script>
+</body>
+</html>

@@ -7,6 +7,7 @@ import { BackgroundRunner } from '@capacitor/background-runner';
 import { Share } from '@capacitor/share';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { SplashScreen } from '@capacitor/splash-screen';
+import { initVideo, videoCard, videoRow, videoClick, videoSubmit, videoInput, videoApiInfo, recoverPurchases } from './video.js';
 
 const SITE = 'https://www.pezzadox.com';
 const RUNNER = 'com.pezzadox.worlds.episodes';
@@ -167,7 +168,7 @@ function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.ad
 const alerts = { get on() { return store.get('alerts', false); } };
 async function syncRunner() {
   if (!native) return;
-  try { await BackgroundRunner.dispatchEvent({ label: RUNNER, event: 'syncKnown', details: { slugs: episodes.map(e => e.slug), enabled: alerts.on } }); } catch {}
+  try { await BackgroundRunner.dispatchEvent({ label: RUNNER, event: 'syncKnown', details: { slugs: episodes.map(e => e.slug), enabled: alerts.on, video: videoApiInfo() } }); } catch {}
 }
 async function setAlerts(want) {
   if (want && native) {
@@ -200,6 +201,7 @@ function homeView() {
     </button>` : ''}
     <h2>The shows</h2>
     <div class="shows">${SHOWS.map((s, i) => `<button class="show" data-open="${esc(s.url)}"><i>${s.em}</i><b>${esc(s.name)}</b></button>`).join('')}</div>
+    ${videoCard()}
     <h2>More episodes <button data-tab-go="episodes">See all</button></h2>
     <div class="row">${rest.slice(0, 8).map(e => `<button class="mini" data-ep="${esc(e.slug)}">${thumb(e)}<b>${esc(e.title)}</b></button>`).join('')}</div>
     ${store.get('shorts', []).length ? `<h2>Shorts <button data-tab-go="watch">See all</button></h2>
@@ -271,6 +273,7 @@ function moreView() {
       ${linkRow('🧑‍🤝‍🧑', 'Guests', 'Everyone who has sat in the chair', 'data-open="/guests.html"')}
       ${linkRow('📰', 'News', 'What’s happening at Pezzadox', 'data-open="/news.html"')}
       ${linkRow('🛍️', 'Shop', 'Merch', 'data-open="/shop.html"')}
+      ${videoRow(linkRow)}
       ${linkRow('☕', 'Buy me a coffee', 'Support the show', 'data-out="https://buymeacoffee.com/kyle1g"')}
     </div>
     <h2>Work with Kyle</h2>
@@ -282,7 +285,7 @@ function moreView() {
     <h2>Settings</h2>
     <div class="links">
       <button data-alerts="${alerts.on ? 'off' : 'on'}"><span class="ic">🔔</span><span class="tx"><b>New episode alerts</b><small>${alerts.on ? 'On' : 'Off'}</small></span><span class="switch ${alerts.on ? 'on' : ''}" role="switch" aria-checked="${alerts.on}"></span></button>
-      ${linkRow('🔒', 'Privacy policy', 'Pezzadox Worlds collects nothing about you', 'data-open="/pezzadox-worlds-privacy.html"')}
+      ${linkRow('🔒', 'Privacy policy', videoApiInfo() ? 'What the app does and does not collect' : 'Pezzadox Worlds collects nothing about you', 'data-open="/pezzadox-worlds-privacy.html"')}
     </div>
     <h2>More from Pezzadox</h2>
     <div class="links">
@@ -364,6 +367,7 @@ document.addEventListener('click', ev => {
   if (d.out) return openOut(d.out);
   if (d.topic) { topic = d.topic; tap(); return render(); }
   if (d.alerts) return setAlerts(d.alerts === 'on');
+  if (d.video) return videoClick(d);
   if (d.toast) return toast(d.toast);
   if ('close' in d) return closeSheet();
   if (d.share) {
@@ -374,18 +378,22 @@ document.addEventListener('click', ev => {
     navigator.clipboard?.writeText(url).then(() => toast('Link copied'), () => {});
   }
 });
-document.addEventListener('input', ev => { if (ev.target.id === 'q') { query = ev.target.value; render(); } });
+document.addEventListener('input', ev => { if (videoInput(ev)) return; if (ev.target.id === 'q') { query = ev.target.value; render(); } });
+document.addEventListener('submit', ev => { videoSubmit(ev); });
 document.addEventListener('keydown', ev => {
   if (ev.key !== 'Escape') return;
   if ($('#vid').classList.contains('on')) return closeVid();
   if ($('#sheet').classList.contains('on')) closeSheet();
 });
 $('#refreshBtn').addEventListener('click', () => { tap(); toast('Checking for new episodes…'); refresh(true); });
-document.addEventListener('visibilitychange', () => { if (!document.hidden && Date.now() - store.get('checked', 0) > 30 * 60e3) refresh(false); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) return; recoverPurchases(); if (Date.now() - store.get('checked', 0) > 30 * 60e3) refresh(false); });
+
+initVideo({ $, esc, toast, tap, store, render: () => render(), closeSheet: () => closeSheet(), syncRunner: () => syncRunner() });
 
 (async function start() {
   await loadSnapshot();
   render();
+  recoverPurchases();
   if (native) SplashScreen.hide().catch(() => {});
   refresh(false);
 })();

@@ -13,11 +13,34 @@ addEventListener('syncKnown', (resolve, reject, args) => {
     const merged = Array.from(new Set(mine.concat((args && args.slugs) || [])));
     CapacitorKV.set('known', JSON.stringify(merged));
     CapacitorKV.set('enabled', args && args.enabled ? 'yes' : 'no');
+    CapacitorKV.set('video', JSON.stringify((args && args.video) || null));
     resolve();
   } catch (e) { reject(e); }
 });
 
+// Video messages: if this phone is waiting for a video from Kyle, see whether it is ready.
+async function checkVideos() {
+  let v = null;
+  try { v = JSON.parse((CapacitorKV.get('video') || {}).value || 'null'); } catch (e) {}
+  if (!v || !v.url || !v.key || !v.waiting || !v.waiting.length) return;
+  const r = await fetch(v.url, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', apikey: v.anon, authorization: 'Bearer ' + v.anon },
+    body: JSON.stringify({ action: 'list', key: v.key })
+  });
+  const list = ((await r.json()) || {}).requests || [];
+  const done = list.filter(x => v.waiting.indexOf(x.id) !== -1 && x.status !== 'paid');
+  if (!done.length) return;
+  const notes = done.map(x => x.status === 'ready'
+    ? { id: 500000 + Math.floor(Math.random() * 100000), title: 'Your video from Kyle is ready', body: 'For ' + x.forName + '. Open Pezzadox to watch it.' }
+    : { id: 500000 + Math.floor(Math.random() * 100000), title: 'Your video request was refunded', body: x.reason || 'Open Pezzadox for details.' });
+  CapacitorNotifications.schedule(notes);
+  v.waiting = v.waiting.filter(id => !done.some(x => x.id === id));
+  CapacitorKV.set('video', JSON.stringify(v));
+}
+
 addEventListener('checkEpisodes', async (resolve, reject) => {
+  try { await checkVideos(); } catch (e) {}
   try {
     if ((CapacitorKV.get('enabled') || {}).value !== 'yes') return resolve();
     const txt = await (await fetch(SITE + '/pezzadox-sitemap.txt')).text();

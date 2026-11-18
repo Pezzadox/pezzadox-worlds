@@ -23,6 +23,14 @@ jobs:
         with: { node-version: '22', cache: 'npm' }
       - run: npm ci
       - run: npm run build
+      - name: Add the video studio page (Kyle's queue; it asks for a sign-in)
+        env:
+          PW_SUPABASE_URL: ${{ secrets.PW_SUPABASE_URL }}
+          PW_SUPABASE_ANON_KEY: ${{ secrets.PW_SUPABASE_ANON_KEY }}
+        run: |
+          mkdir -p www/studio
+          cp site/video-studio.html www/studio/index.html
+          node -e "require('fs').writeFileSync('www/studio/config.js','window.PW_STUDIO='+JSON.stringify({url:(process.env.PW_SUPABASE_URL||'').trim().replace(/\/+\$/,''),anon:(process.env.PW_SUPABASE_ANON_KEY||'').trim()})+';')"
       - uses: actions/upload-pages-artifact@v3
         with: { path: www }
       - id: deploy

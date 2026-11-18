@@ -48,5 +48,9 @@ Testing → Internal testing.
 Listings, screenshots and the privacy policy are in `store/`. The privacy policy needs a
 public web address for both stores: GitHub Pages or the website both work.
 
-Store questionnaires, for reference: no data collected, no ads, no tracking, no account,
-suitable for everyone (Apple 4+, Google content rating "Everyone"). Category: Entertainment.
+Store questionnaires, Apple (no video messages on iPhone yet): no data collected, no ads, no
+tracking, no account, 4+. Category: Entertainment.
+
+Store questionnaires, Google Play, once video messages are switched on: see
+`docs/video-messages.md`. In short: the app now has in-app purchases, and it collects a
+name, a message and purchase history to provide that purchase.
