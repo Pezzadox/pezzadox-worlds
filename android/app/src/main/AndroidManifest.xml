@@ -35,4 +35,10 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- New-episode alerts never need exact timing; Google Play restricts this permission. -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" tools:node="remove" />
+    <!-- The background-runner plugin asks for location so runners can use its geolocation API.
+         Pezzadox Worlds never uses location, and Play makes background location a declared,
+         reviewed permission, so strip all three. -->
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" tools:node="remove" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" tools:node="remove" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" tools:node="remove" />
 </manifest>
